@@ -9,8 +9,6 @@ No requiere librerías externas — usa `wevtutil`, que ya viene incluido en Win
 - **`revision_pc.py`** — script principal, analiza los logs.
 - **`ejecutar_revision.ps1`** — asistente interactivo que pregunta los parámetros y ejecuta el script por ti.
 - **`ejecutar_revision.bat`** — doble clic para correr el asistente sin preocuparte por políticas de ejecución de PowerShell.
-- **`actualizar_github.ps1`** — automatiza `git add` / `commit` / `push`.
-- **`actualizar_github.bat`** — doble clic para correr la publicación a GitHub sin preocuparte por políticas de ejecución.
 - **`dashboard_revision_pc.html`** — panel visual para explorar el CSV con gráficas y tabla filtrable (ver abajo).
 
 ## Panel visual (dashboard)

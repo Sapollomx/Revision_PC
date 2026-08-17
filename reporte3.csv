@@ -444,19 +444,3 @@ System,2026-08-16T01:08:46.1878290Z,3,Microsoft-Windows-Kernel-PnP,219,,"No se p
 Dispositivo: PCI\VEN_8086&DEV_8A03&SUBSYS_14F21043&REV_03\3&11583659&1&20
 Estado: 0xC0000365",general,https://www.bing.com/search?q=Windows%20Event%20ID%20219%20Microsoft-Windows-Kernel-PnP
 System,2026-08-16T01:08:44.2102200Z,3,Microsoft-Windows-Hyper-V-Hypervisor,167,,"El hipervisor no habilit mitigaciones para vulnerabilidades de canal lateral para mquinas virtuales porque HyperThreading est habilitado. Para habilitar mitigaciones para mquinas virtuales, deshabilite HyperThreading.",general,https://www.bing.com/search?q=Windows%20Event%20ID%20167%20Microsoft-Windows-Hyper-V-Hypervisor
-System,2026-08-16T05:06:13.7000946Z,4,User32,1074,,"El proceso C:\WINDOWS\SystemApps\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy\StartMenuExperienceHost.exe (LA_LAP_DE_FELIX) inici el Apagar del equipo LA_LAP_DE_FELIX en nombre del usuario La_lap_de_felix\palom por el siguiente motivo: Otros (no planeado)
- Cdigo de motivo: 0x0
- Tipo de apagado: Apagar
- Comentario:",apagado_planeado,https://www.bing.com/search?q=Windows%20Event%20ID%201074%20User32
-System,2026-08-16T03:10:37.5135371Z,4,User32,1074,,"El proceso C:\WINDOWS\servicing\TrustedInstaller.exe (LA_LAP_DE_FELIX) inici el Reinicio del equipo LA_LAP_DE_FELIX en nombre del usuario NT AUTHORITY\SYSTEM por el siguiente motivo: Sistema operativo: actualizacin (planeada)
- Cdigo de motivo: 0x80020003
- Tipo de apagado: Reinicio
- Comentario:",apagado_planeado,https://www.bing.com/search?q=Windows%20Event%20ID%201074%20User32
-System,2026-08-16T03:10:00.0689191Z,4,User32,1074,,"El proceso C:\WINDOWS\servicing\TrustedInstaller.exe (LA_LAP_DE_FELIX) inici el Reinicio del equipo LA_LAP_DE_FELIX en nombre del usuario NT AUTHORITY\SYSTEM por el siguiente motivo: Sistema operativo: actualizacin (planeada)
- Cdigo de motivo: 0x80020003
- Tipo de apagado: Reinicio
- Comentario:",apagado_planeado,https://www.bing.com/search?q=Windows%20Event%20ID%201074%20User32
-System,2026-08-16T03:06:06.5454671Z,4,User32,1074,,"El proceso C:\WINDOWS\uus\AMD64\MoNotificationUx.exe (LA_LAP_DE_FELIX) inici el Reinicio del equipo LA_LAP_DE_FELIX en nombre del usuario La_lap_de_felix\palom por el siguiente motivo: Sistema operativo: service pack (planeado)
- Cdigo de motivo: 0x80020010
- Tipo de apagado: Reinicio
- Comentario:",apagado_planeado,https://www.bing.com/search?q=Windows%20Event%20ID%201074%20User32

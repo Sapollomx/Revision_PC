@@ -8,6 +8,19 @@ No requiere librerías externas — usa `wevtutil`, que ya viene incluido en Win
 
 - **`revision_pc.py`** — script principal, analiza los logs.
 - **`ejecutar_revision.ps1`** — asistente interactivo que pregunta los parámetros y ejecuta el script por ti.
+- **`ejecutar_revision.bat`** — doble clic para correr el asistente sin preocuparte por políticas de ejecución de PowerShell.
+- **`actualizar_github.ps1`** — automatiza `git add` / `commit` / `push`.
+- **`actualizar_github.bat`** — doble clic para correr la publicación a GitHub sin preocuparte por políticas de ejecución.
+
+## Si descargaste este repo como ZIP (no con `git clone`)
+
+Windows marca los archivos extraídos de un ZIP descargado por navegador como "de Internet" (Mark of the Web), lo que bloquea los `.ps1` con el error *"cannot be loaded... is not digitally signed"*, sin importar tu política de ejecución. Dos formas de evitarlo:
+
+- Usa los archivos **`.bat`** en vez de los `.ps1` directamente (les hacen doble clic normal, no requieren desbloquear nada).
+- O desbloquea el ZIP antes de extraerlo: clic derecho → Propiedades → casilla "Unblock" → Aceptar.
+- O, si ya lo extrajiste, corre `Unblock-File .\ejecutar_revision.ps1` (y lo mismo para `actualizar_github.ps1`).
+
+Si en cambio clonas con `git clone`, este problema no ocurre — Git no marca los archivos.
 
 ## Uso rápido (recomendado)
 

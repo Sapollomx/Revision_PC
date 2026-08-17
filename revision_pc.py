@@ -2,14 +2,15 @@
 """
 revision_pc.py - Analiza los registros de eventos de Windows para identificar
 errores y advertencias que puedan indicar fallas en el equipo, con deteccion
-especifica de apagados/reinicios inesperados (cortes de energia, BSOD, etc).
+especifica de apagados/reinicios inesperados (cortes de energia, BSOD, etc)
+y mensajes de detalle completos (los mismos que muestra el Visor de Eventos).
 
 Requiere: Windows (usa wevtutil, incluido de forma nativa. No necesitas instalar nada).
 
 Uso:
     python revision_pc.py
     python revision_pc.py --dias 30
-    python revision_pc.py --dias 14 --incluir-advertencias
+    python revision_pc.py --dias 14 --incluir-advertencias --top 15
     python revision_pc.py --salida reporte.csv
 """
 
@@ -20,6 +21,7 @@ import sys
 import xml.etree.ElementTree as ET
 from collections import Counter
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 
 NS = {"e": "http://schemas.microsoft.com/win/2004/08/events/event"}
 
@@ -71,11 +73,22 @@ def construir_query_especifico(provider, event_id, dias):
     )
 
 
+def generar_url_busqueda(proveedor, event_id):
+    """Link listo para abrir en el navegador y profundizar (no lo abre el script)."""
+    consulta = quote(f"Windows Event ID {event_id} {proveedor}")
+    return f"https://www.bing.com/search?q={consulta}"
+
+
 def consultar_log(nombre_log, query, categoria="general", max_eventos=500):
+    """
+    Usa /f:renderedxml para que Windows incluya el mensaje ya traducido/explicado
+    (el mismo texto que ves en Visor de Eventos > pestana General), en vez de
+    solo los valores crudos de EventData. Todo esto es local, sin internet.
+    """
     cmd = [
         "wevtutil", "qe", nombre_log,
         f"/q:{query}",
-        "/f:xml",
+        "/f:renderedxml",
         f"/c:{max_eventos}",
         "/rd:true",
     ]
@@ -115,13 +128,25 @@ def consultar_log(nombre_log, query, categoria="general", max_eventos=500):
         tiempo_el = sistema.find("e:TimeCreated", NS)
         tiempo = tiempo_el.get("SystemTime") if tiempo_el is not None else "?"
 
-        datos = []
-        eventdata = evento.find("e:EventData", NS)
-        if eventdata is not None:
-            for d in eventdata.findall("e:Data", NS):
-                if d.text:
-                    datos.append(d.text)
-        mensaje = " | ".join(datos)[:200]
+        mensaje_completo = ""
+        tarea = ""
+        render_info = evento.find("e:RenderingInfo", NS)
+        if render_info is not None:
+            msg_el = render_info.find("e:Message", NS)
+            if msg_el is not None and msg_el.text:
+                mensaje_completo = msg_el.text.strip()
+            tarea_el = render_info.find("e:Task", NS)
+            if tarea_el is not None and tarea_el.text:
+                tarea = tarea_el.text.strip()
+
+        if not mensaje_completo:
+            datos = []
+            eventdata = evento.find("e:EventData", NS)
+            if eventdata is not None:
+                for d in eventdata.findall("e:Data", NS):
+                    if d.text:
+                        datos.append(d.text)
+            mensaje_completo = " | ".join(datos)
 
         eventos.append({
             "log": nombre_log,
@@ -129,13 +154,15 @@ def consultar_log(nombre_log, query, categoria="general", max_eventos=500):
             "nivel": nivel,
             "proveedor": proveedor,
             "event_id": event_id,
-            "mensaje": mensaje,
+            "tarea": tarea,
+            "mensaje": mensaje_completo,
             "categoria": categoria,
+            "url_busqueda": generar_url_busqueda(proveedor, event_id),
         })
     return eventos
 
 
-def imprimir_resumen(eventos):
+def imprimir_resumen(eventos, top=10):
     if not eventos:
         print("No se encontraron eventos de error/critico en el rango solicitado. Buena senal.")
         return
@@ -147,12 +174,19 @@ def imprimir_resumen(eventos):
     for (proveedor, event_id), veces in contador.most_common(10):
         print(f"  - {proveedor} (ID {event_id}): {veces} veces")
 
-    print("\nUltimos 10 eventos (mas recientes primero):")
-    for e in eventos[:10]:
+    print(f"\nUltimos {top} eventos (mas recientes primero, con detalle completo):")
+    print("-" * 70)
+    for i, e in enumerate(eventos[:top], start=1):
         nivel_txt = NIVEL_TEXTO.get(e["nivel"], e["nivel"])
-        print(f"  [{e['tiempo']}] {e['log']} | {nivel_txt} | {e['proveedor']} (ID {e['event_id']})")
+        print(f"\n[{i}] {e['tiempo']}  |  {nivel_txt}  |  Log: {e['log']}")
+        print(f"    Origen: {e['proveedor']}   ID de evento: {e['event_id']}")
+        if e["tarea"] and e["tarea"] not in ("", "None"):
+            print(f"    Categoria/Tarea: {e['tarea']}")
         if e["mensaje"]:
-            print(f"      {e['mensaje']}")
+            print(f"    Descripcion: {e['mensaje']}")
+        else:
+            print("    Descripcion: (Windows no tiene una plantilla de mensaje local para este proveedor)")
+        print(f"    Mas info: {e['url_busqueda']}")
 
 
 def detectar_apagados_inesperados(dias):
@@ -190,13 +224,16 @@ def imprimir_apagados_inesperados(resultado):
     print(f"\nSe detectaron {len(inesperados)} evento(s) de apagado/reinicio no controlado:\n")
     for e in inesperados:
         print(f"  [{e['tiempo']}] {e['proveedor']} (ID {e['event_id']})")
+        if e["mensaje"]:
+            print(f"      {e['mensaje']}")
 
     if bugcheck:
         print(f"\nDe estos, {len(bugcheck)} corresponden a pantallas azules (BSOD) con codigo de error:\n")
         for e in bugcheck:
-            codigo = e["mensaje"].split(" | ")[0].strip().lower() if e["mensaje"] else "desconocido"
-            pista = BUGCHECK_HINTS.get(codigo, "codigo no catalogado, buscar el codigo en Microsoft Docs")
+            codigo = e["mensaje"].split()[0].strip().lower() if e["mensaje"] else "desconocido"
+            pista = BUGCHECK_HINTS.get(codigo, "codigo no catalogado, revisa el link de mas info")
             print(f"  [{e['tiempo']}] Codigo: {codigo}  ->  {pista}")
+            print(f"      Mas info: {e['url_busqueda']}")
 
     sin_bugcheck = len(inesperados) - len(bugcheck)
     if sin_bugcheck > 0:
@@ -216,7 +253,8 @@ def imprimir_apagados_inesperados(resultado):
 def guardar_csv(eventos, ruta):
     with open(ruta, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
-            f, fieldnames=["log", "tiempo", "nivel", "proveedor", "event_id", "mensaje", "categoria"]
+            f, fieldnames=["log", "tiempo", "nivel", "proveedor", "event_id",
+                           "tarea", "mensaje", "categoria", "url_busqueda"]
         )
         writer.writeheader()
         writer.writerows(eventos)
@@ -235,6 +273,8 @@ def main():
                          help="Incluir tambien advertencias (nivel 3), no solo errores/criticos")
     parser.add_argument("--sin-apagados", action="store_true",
                          help="Omitir la seccion de deteccion de apagados inesperados")
+    parser.add_argument("--top", type=int, default=10,
+                         help="Cuantos eventos recientes mostrar con detalle completo (default: 10)")
     parser.add_argument("--salida", type=str, default=None,
                          help="Ruta de archivo CSV de salida (opcional, incluye todo lo encontrado)")
     args = parser.parse_args()
@@ -249,7 +289,7 @@ def main():
         todos_los_eventos.extend(eventos)
 
     todos_los_eventos.sort(key=lambda e: e["tiempo"], reverse=True)
-    imprimir_resumen(todos_los_eventos)
+    imprimir_resumen(todos_los_eventos, top=args.top)
 
     resultado_apagados = None
     if not args.sin_apagados:

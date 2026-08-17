@@ -11,6 +11,24 @@ No requiere librerías externas — usa `wevtutil`, que ya viene incluido en Win
 - **`ejecutar_revision.bat`** — doble clic para correr el asistente sin preocuparte por políticas de ejecución de PowerShell.
 - **`actualizar_github.ps1`** — automatiza `git add` / `commit` / `push`.
 - **`actualizar_github.bat`** — doble clic para correr la publicación a GitHub sin preocuparte por políticas de ejecución.
+- **`dashboard_revision_pc.html`** — panel visual para explorar el CSV con gráficas y tabla filtrable (ver abajo).
+
+## Panel visual (dashboard)
+
+`dashboard_revision_pc.html` es un archivo independiente que corre en tu navegador — no requiere servidor ni instalar nada, y el CSV se procesa localmente (nada sale de tu equipo).
+
+```powershell
+python revision_pc.py --dias 30 --salida reporte.csv
+start dashboard_revision_pc.html
+```
+
+En la ventana que se abre, clic en "Cargar CSV" y selecciona `reporte.csv`. Vas a ver:
+
+- **Pulso de eventos**: actividad total por día, con los críticos marcados.
+- **KPIs**: total, críticos, errores, advertencias, apagados inesperados, BSOD.
+- **Orígenes más frecuentes** y **distribución por nivel** (gráficas).
+- **Sección de apagados inesperados**, destacada si hay alguno.
+- **Tabla filtrable** por texto, nivel o categoría, con link a "Más info" por evento.
 
 ## Si descargaste este repo como ZIP (no con `git clone`)
 

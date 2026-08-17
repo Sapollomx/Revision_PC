@@ -11,6 +11,7 @@
 Write-Host "=== Revision de PC - Configuracion ===" -ForegroundColor Cyan
 Write-Host "Deja en blanco y da Enter para usar el valor por default.`n" -ForegroundColor DarkGray
 
+# --- dias ---
 $diasInput = Read-Host "Cuantos dias hacia atras revisar? (default: 7)"
 $dias = 7
 if (-not [string]::IsNullOrWhiteSpace($diasInput)) {
@@ -22,18 +23,22 @@ if (-not [string]::IsNullOrWhiteSpace($diasInput)) {
     }
 }
 
+# --- logs ---
 $logsInput = Read-Host "Logs a revisar, separados por coma (default: System,Application)"
 $logs = "System,Application"
 if (-not [string]::IsNullOrWhiteSpace($logsInput)) {
     $logs = $logsInput
 }
 
+# --- incluir advertencias ---
 $advertenciasInput = Read-Host "Incluir advertencias, no solo errores/criticos? (s/N)"
 $incluirAdvertencias = $advertenciasInput -match '^[sSyY]'
 
+# --- omitir apagados ---
 $sinApagadosInput = Read-Host "Omitir la seccion de apagados inesperados? (s/N)"
 $sinApagados = $sinApagadosInput -match '^[sSyY]'
 
+# --- top ---
 $topInput = Read-Host "Cuantos eventos recientes mostrar con detalle? (default: 10)"
 $top = 10
 if (-not [string]::IsNullOrWhiteSpace($topInput)) {
@@ -45,8 +50,10 @@ if (-not [string]::IsNullOrWhiteSpace($topInput)) {
     }
 }
 
-$salida = Read-Host "Ruta de CSV para guardar el reporte (Enter = no guardar)"
+# --- salida CSV ---
+$salida = Read-Host "Ruta COMPLETA del CSV a generar, con nombre incluido, ej. D:\Revision_PC\reporte.csv (Enter = no guardar)"
 
+# --- construir argumentos ---
 $argumentos = @("revision_pc.py", "--dias", $dias, "--logs", $logs, "--top", $top)
 if ($incluirAdvertencias) { $argumentos += "--incluir-advertencias" }
 if ($sinApagados) { $argumentos += "--sin-apagados" }

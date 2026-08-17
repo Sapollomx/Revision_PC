@@ -53,7 +53,7 @@ python revision_pc.py --dias 30 --salida reporte.csv
 | `--incluir-advertencias` | desactivado | Incluye nivel Advertencia, no solo Crítico/Error |
 | `--sin-apagados` | desactivado | Omite la detección de apagados inesperados |
 | `--top` | 10 | Cuántos eventos recientes mostrar con detalle completo |
-| `--salida` | (ninguno) | Ruta de un CSV donde guardar todo lo encontrado |
+| `--salida` | (ninguno) | Ruta **completa** del archivo CSV a generar, incluyendo el nombre (ej: `D:\Revision_PC\reporte.csv`). No es solo una carpeta. |
 
 ## Qué hace
 

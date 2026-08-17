@@ -16,6 +16,7 @@ Uso:
 
 import argparse
 import csv
+import os
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -128,6 +129,7 @@ def consultar_log(nombre_log, query, categoria="general", max_eventos=500):
         tiempo_el = sistema.find("e:TimeCreated", NS)
         tiempo = tiempo_el.get("SystemTime") if tiempo_el is not None else "?"
 
+        # Mensaje explicado (rendering info), tarea y palabras clave si Windows los tiene localmente
         mensaje_completo = ""
         tarea = ""
         render_info = evento.find("e:RenderingInfo", NS)
@@ -139,6 +141,8 @@ def consultar_log(nombre_log, query, categoria="general", max_eventos=500):
             if tarea_el is not None and tarea_el.text:
                 tarea = tarea_el.text.strip()
 
+        # Si el proveedor no tiene tabla de mensajes local (comun en apps de terceros),
+        # caemos de regreso a los datos crudos.
         if not mensaje_completo:
             datos = []
             eventdata = evento.find("e:EventData", NS)
@@ -251,14 +255,28 @@ def imprimir_apagados_inesperados(resultado):
 
 
 def guardar_csv(eventos, ruta):
-    with open(ruta, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f, fieldnames=["log", "tiempo", "nivel", "proveedor", "event_id",
-                           "tarea", "mensaje", "categoria", "url_busqueda"]
-        )
-        writer.writeheader()
-        writer.writerows(eventos)
-    print(f"\nReporte guardado en: {ruta}")
+    if os.path.isdir(ruta):
+        sugerencia = os.path.join(ruta, "reporte.csv")
+        print(f"\nERROR: '{ruta}' es una carpeta, no un archivo.")
+        print(f"  --salida necesita la ruta COMPLETA incluyendo el nombre del CSV, por ejemplo:")
+        print(f"  --salida \"{sugerencia}\"")
+        return
+
+    try:
+        with open(ruta, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["log", "tiempo", "nivel", "proveedor", "event_id",
+                               "tarea", "mensaje", "categoria", "url_busqueda"]
+            )
+            writer.writeheader()
+            writer.writerows(eventos)
+        print(f"\nReporte guardado en: {ruta}")
+    except PermissionError:
+        print(f"\nERROR: no se pudo escribir en '{ruta}'.")
+        print("  Verifica que sea la ruta de un ARCHIVO (con nombre y extension .csv), no una carpeta,")
+        print("  y que tengas permisos de escritura en esa ubicacion.")
+    except OSError as e:
+        print(f"\nERROR al guardar el CSV en '{ruta}': {e}")
 
 
 def main():
@@ -276,7 +294,8 @@ def main():
     parser.add_argument("--top", type=int, default=10,
                          help="Cuantos eventos recientes mostrar con detalle completo (default: 10)")
     parser.add_argument("--salida", type=str, default=None,
-                         help="Ruta de archivo CSV de salida (opcional, incluye todo lo encontrado)")
+                         help="Ruta COMPLETA del archivo CSV a generar, incluyendo el nombre "
+                              "(ej: D:\\Revision_PC\\reporte.csv). No es solo una carpeta. Opcional.")
     args = parser.parse_args()
 
     nivel_max = 3 if args.incluir_advertencias else 2

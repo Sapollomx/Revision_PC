@@ -75,12 +75,30 @@ python revision_pc.py --logs System,Application,Setup
 python revision_pc.py --dias 30 --salida reporte.csv
 ```
 
+### Logs disponibles
+
+Los que puedes indicar en `--logs` (separados por coma) o al usar el asistente interactivo:
+
+| Log | Contiene | Notas |
+|---|---|---|
+| `System` | Drivers, hardware, servicios del sistema | Incluido por default |
+| `Application` | Errores de programas instalados | Incluido por default |
+| `Setup` | Instalación de Windows y actualizaciones | |
+| `Security` | Inicios de sesión y auditoría | Requiere PowerShell como Administrador |
+| `todos` | TODOS los logs del sistema (cientos) | Más lento, puede tardar varios minutos |
+
+Ejemplos:
+```bash
+python revision_pc.py --logs System,Application,Setup
+python revision_pc.py --logs todos
+```
+
 ### Parámetros de `revision_pc.py`
 
 | Flag | Default | Descripción |
 |---|---|---|
 | `--dias` | 7 | Días hacia atrás a revisar |
-| `--logs` | System,Application | Logs a consultar, separados por coma. Escribe `todos` para revisar TODOS los logs del sistema (cientos de ellos, más lento). Otras opciones comunes: `System` (drivers/hardware), `Application` (programas), `Setup` (instalación/actualizaciones), `Security` (requiere PowerShell como Administrador). |
+| `--logs` | System,Application | Logs a consultar, separados por coma. Ver sección "Logs disponibles" arriba. |
 | `--incluir-advertencias` | desactivado | Incluye nivel Advertencia, no solo Crítico/Error |
 | `--sin-apagados` | desactivado | Omite la detección de apagados inesperados |
 | `--top` | 10 | Cuántos eventos recientes mostrar con detalle completo |

@@ -24,7 +24,14 @@ if (-not [string]::IsNullOrWhiteSpace($diasInput)) {
 }
 
 # --- logs ---
-$logsInput = Read-Host "Logs a revisar, separados por coma (default: System,Application)"
+Write-Host ""
+Write-Host "Logs disponibles mas comunes:" -ForegroundColor DarkGray
+Write-Host "  System      - drivers, hardware, servicios del sistema (recomendado)" -ForegroundColor DarkGray
+Write-Host "  Application - errores de programas instalados (recomendado)" -ForegroundColor DarkGray
+Write-Host "  Setup       - instalacion de Windows y actualizaciones" -ForegroundColor DarkGray
+Write-Host "  Security    - inicios de sesion y auditoria (necesita PowerShell como Administrador)" -ForegroundColor DarkGray
+Write-Host "  todos       - revisa TODOS los logs del sistema (cientos de ellos, mas lento)" -ForegroundColor DarkGray
+$logsInput = Read-Host "`nQue logs revisar, separados por coma (Enter = System,Application, los 2 mas utiles)"
 $logs = "System,Application"
 if (-not [string]::IsNullOrWhiteSpace($logsInput)) {
     $logs = $logsInput

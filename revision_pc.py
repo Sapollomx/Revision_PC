@@ -56,6 +56,21 @@ BUGCHECK_HINTS = {
 }
 
 
+def obtener_todos_los_logs():
+    """Enumera TODOS los logs de eventos disponibles en el sistema (wevtutil el)."""
+    try:
+        salida = subprocess.run(
+            ["wevtutil", "el"], capture_output=True, text=True,
+            encoding="utf-8", errors="ignore", timeout=30
+        )
+    except FileNotFoundError:
+        print("ERROR: 'wevtutil' no se encontro. Este script solo funciona en Windows.")
+        sys.exit(1)
+    if salida.returncode != 0:
+        return []
+    return [linea.strip() for linea in salida.stdout.splitlines() if linea.strip()]
+
+
 def construir_query(nivel_max, dias):
     fecha_limite = (datetime.now(timezone.utc) - timedelta(days=dias)).strftime(
         "%Y-%m-%dT%H:%M:%S.000Z"
@@ -286,7 +301,9 @@ def main():
     parser.add_argument("--dias", type=int, default=7,
                          help="Cuantos dias hacia atras revisar (default: 7)")
     parser.add_argument("--logs", type=str, default="System,Application",
-                         help="Logs a revisar separados por coma (default: System,Application)")
+                         help="Logs a revisar, separados por coma (default: System,Application). "
+                              "Escribe 'todos' para revisar TODOS los logs del sistema (mas lento). "
+                              "Otras opciones comunes: Setup, Security (requiere admin).")
     parser.add_argument("--incluir-advertencias", action="store_true",
                          help="Incluir tambien advertencias (nivel 3), no solo errores/criticos")
     parser.add_argument("--sin-apagados", action="store_true",
@@ -302,7 +319,16 @@ def main():
     query = construir_query(nivel_max, args.dias)
 
     todos_los_eventos = []
-    for nombre_log in [l.strip() for l in args.logs.split(",")]:
+    lista_logs_input = [l.strip() for l in args.logs.split(",")]
+    if len(lista_logs_input) == 1 and lista_logs_input[0].lower() in ("todos", "all", "*"):
+        print("Enumerando todos los logs del sistema (puede tardar varios minutos)...")
+        lista_logs = obtener_todos_los_logs()
+        print(f"Se encontraron {len(lista_logs)} logs. Revisando cada uno "
+              f"(los que requieran permisos que no tienes se omiten automaticamente)...\n")
+    else:
+        lista_logs = lista_logs_input
+
+    for nombre_log in lista_logs:
         print(f"Consultando log '{nombre_log}'...")
         eventos = consultar_log(nombre_log, query, categoria="general")
         todos_los_eventos.extend(eventos)

@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de diagnóstico · Revision_PC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg: #10151b;
+    --bg-alt: #0b0f14;
+    --surface: #171e27;
+    --surface-2: #1d2631;
+    --border: #262f3a;
+    --text: #e8edf2;
+    --text-muted: #8b98a8;
+    --text-dim: #5c6878;
+    --accent: #4fd1c5;
+    --critical: #ff5c57;
+    --error: #f2994a;
+    --warning: #f2c94c;
+    --info: #5b9bd5;
+    --ok: #3dd68c;
+    --radius: 12px;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(79,209,197,0.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    min-height:100vh;
+    padding-bottom:4rem;
+  }
+
+  a{ color:var(--accent); }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 24px; }
+
+  /* ---------- topbar ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:28px 0 24px; border-bottom:1px solid var(--border);
+    flex-wrap:wrap; gap:16px;
+  }
+  .topbar__eyebrow{
+    display:block; font-family:var(--font-mono); font-size:11px; letter-spacing:0.16em;
+    color:var(--accent); text-transform:uppercase; margin-bottom:6px;
+  }
+  .topbar h1{
+    font-family:var(--font-display); font-weight:700; font-size:26px; margin:0;
+    letter-spacing:-0.01em;
+  }
+  .topbar__actions{ display:flex; gap:10px; align-items:center; }
+
+  .file-btn, .ghost-btn{
+    font-family:var(--font-body); font-weight:600; font-size:14px;
+    padding:11px 18px; border-radius:8px; cursor:pointer;
+    border:1px solid var(--border); transition:transform .12s ease, border-color .12s ease;
+  }
+  .file-btn{ background:var(--accent); color:#0b1512; border-color:var(--accent); }
+  .file-btn:hover{ transform:translateY(-1px); }
+  .ghost-btn{ background:transparent; color:var(--text-muted); }
+  .ghost-btn:hover{ color:var(--text); border-color:var(--text-dim); }
+
+  /* ---------- empty state ---------- */
+  .empty{
+    margin-top:56px; padding:40px; border:1px dashed var(--border); border-radius:var(--radius);
+    background:var(--surface); text-align:left; max-width:720px; margin-left:auto; margin-right:auto;
+  }
+  .empty h2{ font-family:var(--font-display); font-size:19px; margin:0 0 8px; }
+  .empty p{ color:var(--text-muted); font-size:14px; line-height:1.6; margin:0 0 18px; }
+  .empty .cmd{
+    font-family:var(--font-mono); font-size:13px; background:var(--bg-alt);
+    border:1px solid var(--border); border-radius:8px; padding:14px 16px; color:var(--ok);
+    display:flex; align-items:center; gap:2px;
+  }
+  .empty .cmd::before{ content:"PS> "; color:var(--text-dim); }
+  .cursor{ display:inline-block; width:7px; height:15px; background:var(--ok); margin-left:6px; }
+  @media (prefers-reduced-motion: no-preference){
+    .cursor{ animation: blink 1s steps(1) infinite; }
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+  .empty .drop{
+    margin-top:20px; border:1px dashed var(--text-dim); border-radius:8px; padding:22px;
+    text-align:center; color:var(--text-dim); font-size:13px;
+  }
+
+  /* ---------- dashboard ---------- */
+  #dashboard{ display:none; }
+  section{ margin-top:32px; }
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+  .section-head h2{ font-family:var(--font-display); font-size:16px; margin:0; }
+  .section-head .hint{ font-size:12.5px; color:var(--text-dim); }
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:20px;
+  }
+
+  /* pulse */
+  .pulse-card{ height:260px; }
+  .pulse-card canvas{ width:100%!important; height:100%!important; }
+
+  /* kpis */
+  .kpi-grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px;
+  }
+  .kpi{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:16px 18px;
+  }
+  .kpi__label{ font-size:11.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+  .kpi__value{ font-family:var(--font-mono); font-size:26px; font-weight:500; }
+  .kpi--critical .kpi__value{ color:var(--critical); }
+  .kpi--error .kpi__value{ color:var(--error); }
+  .kpi--warning .kpi__value{ color:var(--warning); }
+  .kpi--ok .kpi__value{ color:var(--ok); }
+
+  /* charts row */
+  .charts-row{ display:grid; grid-template-columns:1.4fr 1fr; gap:16px; }
+  .chart-card{ height:300px; display:flex; flex-direction:column; }
+  .chart-card h3{ font-family:var(--font-display); font-size:14px; margin:0 0 12px; font-weight:500; color:var(--text-muted); }
+  .chart-card .chart-holder{ flex:1; position:relative; }
+
+  /* apagados */
+  .apagados-card{ border-color:#3a2530; background:linear-gradient(180deg, rgba(255,92,87,0.06), transparent 40%); }
+  .apagados-card.ok{ border-color:#1f3a2c; background:linear-gradient(180deg, rgba(61,214,140,0.06), transparent 40%); }
+  .apagados-list{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+  .apagado-item{
+    display:flex; justify-content:space-between; gap:14px; padding:12px 14px;
+    background:var(--surface-2); border-radius:8px; border:1px solid var(--border);
+    font-size:13px; flex-wrap:wrap;
+  }
+  .apagado-item .when{ font-family:var(--font-mono); color:var(--text-dim); white-space:nowrap; }
+  .apagado-item .what{ color:var(--text-muted); flex:1; min-width:200px; }
+  .apagado-item .badge{ align-self:flex-start; }
+
+  /* badges */
+  .badge{
+    display:inline-block; font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px;
+    font-family:var(--font-body); white-space:nowrap;
+  }
+  .badge--1{ background:rgba(255,92,87,0.15); color:var(--critical); }
+  .badge--2{ background:rgba(242,153,74,0.15); color:var(--error); }
+  .badge--3{ background:rgba(242,201,76,0.15); color:var(--warning); }
+  .badge--4{ background:rgba(91,155,213,0.15); color:var(--info); }
+  .badge--default{ background:rgba(139,152,168,0.15); color:var(--text-muted); }
+  .badge--cat{ background:rgba(79,209,197,0.12); color:var(--accent); }
+
+  /* table */
+  .filters{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .filters input, .filters select{
+    background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:9px 12px; font-family:var(--font-body); font-size:13px;
+  }
+  .filters input{ flex:1; min-width:200px; }
+  .filters input:focus, .filters select:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  .table-wrap{ overflow:auto; max-height:520px; border:1px solid var(--border); border-radius:var(--radius); }
+  table{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  thead th{
+    position:sticky; top:0; background:var(--surface-2); text-align:left; padding:10px 12px;
+    font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--text-dim); border-bottom:1px solid var(--border);
+  }
+  tbody td{ padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--text-muted); }
+  tbody tr:hover{ background:rgba(255,255,255,0.02); }
+  tbody tr.row-apagado_inesperado{ background:rgba(255,92,87,0.04); }
+  tbody tr.row-bugcheck_bsod{ background:rgba(255,92,87,0.08); }
+  .mono{ font-family:var(--font-mono); color:var(--text); white-space:nowrap; }
+  .msg-cell{ max-width:360px; }
+  .info-link{ font-family:var(--font-mono); font-size:11.5px; white-space:nowrap; }
+  .table-note{ font-size:12px; color:var(--text-dim); margin-top:10px; }
+
+  footer{ margin-top:48px; text-align:center; color:var(--text-dim); font-size:12px; }
+
+  @media (max-width:860px){
+    .charts-row{ grid-template-columns:1fr; }
+    .chart-card{ height:260px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <div>
+      <span class="topbar__eyebrow">Revision_PC</span>
+      <h1>Panel de diagnóstico</h1>
+    </div>
+    <div class="topbar__actions">
+      <label class="file-btn" for="csvInput">Cargar CSV</label>
+      <input type="file" id="csvInput" accept=".csv" hidden>
+      <button id="resetBtn" class="ghost-btn" hidden type="button">Cargar otro archivo</button>
+    </div>
+  </div>
+
+  <div id="emptyState" class="empty">
+    <h2>Todavía no hay datos cargados</h2>
+    <p>Genera el reporte con <code>revision_pc.py</code> y luego súbelo aquí. Nada se envía a ningún servidor — el CSV se procesa en tu navegador.</p>
+    <div class="cmd">python revision_pc.py --dias 30 --salida reporte.csv<span class="cursor" aria-hidden="true"></span></div>
+    <div class="drop">Usa el botón "Cargar CSV" de arriba para seleccionar el archivo <code>reporte.csv</code>.</div>
+  </div>
+
+  <div id="dashboard">
+
+    <section>
+      <div class="section-head">
+        <h2>Pulso de eventos</h2>
+        <span class="hint">Actividad total por día · picos rojos = eventos críticos</span>
+      </div>
+      <div class="card pulse-card">
+        <canvas id="pulseChart"></canvas>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head"><h2>Resumen</h2></div>
+      <div class="kpi-grid" id="kpiGrid"></div>
+    </section>
+
+    <section>
+      <div class="charts-row">
+        <div class="card chart-card">
+          <h3>Orígenes más frecuentes</h3>
+          <div class="chart-holder"><canvas id="barChart"></canvas></div>
+        </div>
+        <div class="card chart-card">
+          <h3>Distribución por nivel</h3>
+          <div class="chart-holder"><canvas id="donutChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-head"><h2>Apagados inesperados</h2></div>
+      <div class="card apagados-card" id="apagadosCard"></div>
+    </section>
+
+    <section>
+      <div class="section-head">
+        <h2>Todos los eventos</h2>
+        <span class="hint" id="tableCount"></span>
+      </div>
+      <div class="filters">
+        <input type="text" id="searchInput" placeholder="Buscar por origen, ID o mensaje...">
+        <select id="nivelFilter">
+          <option value="">Todos los niveles</option>
+          <option value="1">Crítico</option>
+          <option value="2">Error</option>
+          <option value="3">Advertencia</option>
+          <option value="4">Información</option>
+        </select>
+        <select id="categoriaFilter">
+          <option value="">Todas las categorías</option>
+          <option value="general">General</option>
+          <option value="apagado_inesperado">Apagado inesperado</option>
+          <option value="bugcheck_bsod">BSOD</option>
+          <option value="apagado_planeado">Apagado planeado</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha / hora</th>
+              <th>Nivel</th>
+              <th>Log</th>
+              <th>Origen</th>
+              <th>ID</th>
+              <th>Mensaje</th>
+              <th>Categoría</th>
+              <th>Info</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <p class="table-note" id="tableNote"></p>
+    </section>
+
+  </div>
+
+  <footer>Procesado localmente en tu navegador · ningún dato sale de tu equipo</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const PALETTE = {
+    text: '#e8edf2', textMuted: '#8b98a8', textDim: '#5c6878',
+    border: '#262f3a', surface2: '#1d2631',
+    accent: '#4fd1c5', critical: '#ff5c57', error: '#f2994a',
+    warning: '#f2c94c', info: '#5b9bd5', ok: '#3dd68c'
+  };
+
+  const NIVEL_INFO = {
+    '1': { label: 'Crítico',      color: PALETTE.critical, cls: '1' },
+    '2': { label: 'Error',        color: PALETTE.error,    cls: '2' },
+    '3': { label: 'Advertencia',  color: PALETTE.warning,  cls: '3' },
+    '4': { label: 'Información',  color: PALETTE.info,     cls: '4' }
+  };
+  const NIVEL_DEFAULT = { label: 'Desconocido', color: PALETTE.textDim, cls: 'default' };
+
+  const CATEGORIA_LABEL = {
+    general: 'General',
+    apagado_inesperado: 'Apagado inesperado',
+    bugcheck_bsod: 'BSOD',
+    apagado_planeado: 'Apagado planeado'
+  };
+
+  const LIMITE_FILAS = 500;
+
+  let eventos = [];
+  let pulseChart = null, barChart = null, donutChart = null;
+
+  const $ = (id) => document.getElementById(id);
+
+  function parseTiempo(str){
+    if(!str) return null;
+    const normalizado = str.replace(/(\.\d{3})\d*Z$/, '$1Z');
+    const d = new Date(normalizado);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function escapeHtml(str){
+    return (str || '').replace(/[&<>"']/g, (c) => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[c]));
+  }
+
+  function truncar(str, n){
+    if(!str) return '(sin mensaje)';
+    return str.length > n ? str.slice(0, n).trim() + '…' : str;
+  }
+
+  function nivelInfo(n){ return NIVEL_INFO[n] || NIVEL_DEFAULT; }
+
+  // ---------- carga de archivo ----------
+  $('csvInput').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results){
+        eventos = (results.data || []).filter(r => r.tiempo).map(r => {
+          r._fecha = parseTiempo(r.tiempo);
+          return r;
+        });
+        if(eventos.length === 0){
+          alert('El archivo se leyó pero no contiene eventos reconocibles. Verifica que sea el CSV generado por revision_pc.py.');
+          return;
+        }
+        $('emptyState').style.display = 'none';
+        $('dashboard').style.display = 'block';
+        $('resetBtn').hidden = false;
+        renderTodo();
+      },
+      error: function(err){
+        alert('No se pudo leer el archivo: ' + err.message);
+      }
+    });
+  });
+
+  $('resetBtn').addEventListener('click', function(){
+    eventos = [];
+    $('csvInput').value = '';
+    $('dashboard').style.display = 'none';
+    $('emptyState').style.display = 'block';
+    this.hidden = true;
+  });
+
+  // ---------- render principal ----------
+  function renderTodo(){
+    renderKpis();
+    renderPulse();
+    renderBar();
+    renderDonut();
+    renderApagados();
+    renderTabla();
+  }
+
+  function renderKpis(){
+    const total = eventos.length;
+    const criticos = eventos.filter(e => e.nivel === '1').length;
+    const errores = eventos.filter(e => e.nivel === '2').length;
+    const advertencias = eventos.filter(e => e.nivel === '3').length;
+    const apagados = eventos.filter(e => e.categoria === 'apagado_inesperado').length;
+    const bsod = eventos.filter(e => e.categoria === 'bugcheck_bsod').length;
+
+    const kpis = [
+      { label: 'Total de eventos', value: total, cls: '' },
+      { label: 'Críticos', value: criticos, cls: 'critical' },
+      { label: 'Errores', value: errores, cls: 'error' },
+      { label: 'Advertencias', value: advertencias, cls: 'warning' },
+      { label: 'Apagados inesperados', value: apagados, cls: apagados ? 'critical' : 'ok' },
+      { label: 'BSOD detectados', value: bsod, cls: bsod ? 'critical' : 'ok' }
+    ];
+
+    $('kpiGrid').innerHTML = kpis.map(k => `
+      <div class="kpi kpi--${k.cls}">
+        <div class="kpi__label">${k.label}</div>
+        <div class="kpi__value">${k.value}</div>
+      </div>
+    `).join('');
+  }
+
+  function agruparPorDia(){
+    const mapa = new Map();
+    eventos.forEach(e => {
+      if(!e._fecha) return;
+      const d = e._fecha;
+      const clave = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if(!mapa.has(clave)) mapa.set(clave, { total: 0, criticos: 0 });
+      const entrada = mapa.get(clave);
+      entrada.total += 1;
+      if(e.nivel === '1') entrada.criticos += 1;
+    });
+    const claves = Array.from(mapa.keys()).sort();
+    return {
+      labels: claves.map(c => { const [y,m,d] = c.split('-'); return `${d}/${m}`; }),
+      totales: claves.map(c => mapa.get(c).total),
+      criticos: claves.map(c => mapa.get(c).criticos)
+    };
+  }
+
+  function renderPulse(){
+    const { labels, totales, criticos } = agruparPorDia();
+    if(pulseChart) pulseChart.destroy();
+    pulseChart = new Chart($('pulseChart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Eventos totales',
+            data: totales,
+            borderColor: PALETTE.accent,
+            backgroundColor: 'rgba(79,209,197,0.12)',
+            fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2
+          },
+          {
+            label: 'Críticos',
+            data: criticos,
+            borderColor: PALETTE.critical,
+            backgroundColor: 'transparent',
+            fill: false, tension: 0.35, pointRadius: 2.5,
+            pointBackgroundColor: PALETTE.critical, borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: PALETTE.textMuted, font: { family: 'Inter', size: 11 } } },
+          tooltip: { backgroundColor: PALETTE.surface2, titleColor: PALETTE.text, bodyColor: PALETTE.textMuted, borderColor: PALETTE.border, borderWidth: 1 }
+        },
+        scales: {
+          x: { ticks: { color: PALETTE.textDim, font: { family: 'JetBrains Mono', size: 10 } }, grid: { color: PALETTE.border } },
+          y: { beginAtZero: true, ticks: { color: PALETTE.textDim, precision: 0 }, grid: { color: PALETTE.border } }
+        }
+      }
+    });
+  }
+
+  function renderBar(){
+    const mapa = new Map();
+    eventos.forEach(e => {
+      const p = e.proveedor || 'Desconocido';
+      mapa.set(p, (mapa.get(p) || 0) + 1);
+    });
+    const ordenado = Array.from(mapa.entries()).sort((a,b) => b[1]-a[1]).slice(0, 8);
+    if(barChart) barChart.destroy();
+    barChart = new Chart($('barChart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ordenado.map(x => x[0]),
+        datasets: [{ data: ordenado.map(x => x[1]), backgroundColor: PALETTE.accent, borderRadius: 4, barThickness: 14 }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { backgroundColor: PALETTE.surface2, titleColor: PALETTE.text, bodyColor: PALETTE.textMuted } },
+        scales: {
+          x: { beginAtZero: true, ticks: { color: PALETTE.textDim, precision: 0 }, grid: { color: PALETTE.border } },
+          y: { ticks: { color: PALETTE.text, font: { family: 'JetBrains Mono', size: 10.5 } }, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function renderDonut(){
+    const counts = ['1','2','3','4'].map(n => eventos.filter(e => e.nivel === n).length);
+    if(donutChart) donutChart.destroy();
+    donutChart = new Chart($('donutChart').getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Crítico','Error','Advertencia','Información'],
+        datasets: [{ data: counts, backgroundColor: [PALETTE.critical, PALETTE.error, PALETTE.warning, PALETTE.info], borderColor: '#171e27', borderWidth: 2 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '65%',
+        plugins: { legend: { position: 'bottom', labels: { color: PALETTE.textMuted, font: { family: 'Inter', size: 11 }, padding: 12 } } }
+      }
+    });
+  }
+
+  function renderApagados(){
+    const relevantes = eventos.filter(e => e.categoria === 'apagado_inesperado' || e.categoria === 'bugcheck_bsod')
+      .sort((a,b) => (b._fecha||0) - (a._fecha||0));
+    const card = $('apagadosCard');
+
+    if(relevantes.length === 0){
+      card.classList.add('ok');
+      card.innerHTML = `<div style="color:var(--ok); font-family:var(--font-mono); font-size:13.5px;">
+        ✓ No se detectaron apagados o reinicios inesperados en este reporte.
+      </div>`;
+      return;
+    }
+
+    card.classList.remove('ok');
+    card.innerHTML = `
+      <p style="margin:0 0 4px; color:var(--text-muted); font-size:13px;">
+        Se detectaron ${relevantes.length} evento(s) relacionados con apagados no controlados.
+      </p>
+      <div class="apagados-list">
+        ${relevantes.slice(0, 20).map(e => `
+          <div class="apagado-item">
+            <span class="when">${e._fecha ? e._fecha.toLocaleString('es-MX') : e.tiempo}</span>
+            <span class="what">${escapeHtml(e.proveedor)} (ID ${escapeHtml(e.event_id)}) — ${escapeHtml(truncar(e.mensaje, 140))}</span>
+            <span class="badge badge--${e.categoria === 'bugcheck_bsod' ? '1' : '2'}">${CATEGORIA_LABEL[e.categoria] || e.categoria}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function filtrarEventos(){
+    const q = $('searchInput').value.trim().toLowerCase();
+    const nivel = $('nivelFilter').value;
+    const categoria = $('categoriaFilter').value;
+
+    return eventos.filter(e => {
+      if(nivel && e.nivel !== nivel) return false;
+      if(categoria && e.categoria !== categoria) return false;
+      if(q){
+        const haystack = `${e.proveedor||''} ${e.event_id||''} ${e.mensaje||''}`.toLowerCase();
+        if(!haystack.includes(q)) return false;
+      }
+      return true;
+    }).sort((a,b) => (b._fecha||0) - (a._fecha||0));
+  }
+
+  function renderTabla(){
+    const filtrados = filtrarEventos();
+    $('tableCount').textContent = `${filtrados.length} de ${eventos.length} eventos`;
+
+    const visibles = filtrados.slice(0, LIMITE_FILAS);
+    $('tableBody').innerHTML = visibles.map(e => {
+      const ni = nivelInfo(e.nivel);
+      const fecha = e._fecha ? e._fecha.toLocaleString('es-MX') : (e.tiempo || '-');
+      return `
+        <tr class="row-${e.categoria || 'general'}">
+          <td class="mono">${fecha}</td>
+          <td><span class="badge badge--${ni.cls}">${ni.label}</span></td>
+          <td>${escapeHtml(e.log)}</td>
+          <td>${escapeHtml(e.proveedor)}</td>
+          <td class="mono">${escapeHtml(e.event_id)}</td>
+          <td class="msg-cell" title="${escapeHtml(e.mensaje)}">${escapeHtml(truncar(e.mensaje, 110))}</td>
+          <td><span class="badge badge--cat">${CATEGORIA_LABEL[e.categoria] || e.categoria || '-'}</span></td>
+          <td>${e.url_busqueda ? `<a class="info-link" href="${e.url_busqueda}" target="_blank" rel="noopener noreferrer">Buscar ↗</a>` : '-'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    $('tableNote').textContent = filtrados.length > LIMITE_FILAS
+      ? `Mostrando los primeros ${LIMITE_FILAS} resultados de ${filtrados.length}. Usa los filtros para acotar la búsqueda.`
+      : '';
+  }
+
+  ['input','change'].forEach(evt => {
+    $('searchInput').addEventListener(evt, renderTabla);
+    $('nivelFilter').addEventListener('change', renderTabla);
+    $('categoriaFilter').addEventListener('change', renderTabla);
+  });
+
+})();
+</script>
+
+</body>
+</html>

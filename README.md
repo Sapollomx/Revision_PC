@@ -62,7 +62,7 @@ python revision_pc.py --dias 30 --salida reporte.csv
 | Flag | Default | Descripción |
 |---|---|---|
 | `--dias` | 7 | Días hacia atrás a revisar |
-| `--logs` | System,Application | Logs a consultar, separados por coma |
+| `--logs` | System,Application | Logs a consultar, separados por coma. Escribe `todos` para revisar TODOS los logs del sistema (cientos de ellos, más lento). Otras opciones comunes: `System` (drivers/hardware), `Application` (programas), `Setup` (instalación/actualizaciones), `Security` (requiere PowerShell como Administrador). |
 | `--incluir-advertencias` | desactivado | Incluye nivel Advertencia, no solo Crítico/Error |
 | `--sin-apagados` | desactivado | Omite la detección de apagados inesperados |
 | `--top` | 10 | Cuántos eventos recientes mostrar con detalle completo |
